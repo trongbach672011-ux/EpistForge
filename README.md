@@ -1,129 +1,104 @@
 # Multi-Agent Research Tool
 
-Local Python research infrastructure for Codex, Claude Code, Kiro, Kilo Code, and Hermes. The tool is designed as an evidence/provenance boundary: agents may propose, critique, design, and execute research work, but claims are promoted only through the registered experiment, immutable artifacts, evidence graph, and independent verification gates described in [`SPEC.md`](SPEC.md) and [`RULES.md`](RULES.md).
+Local Python CLI and MCP stdio server for evidence-gated research workflows in Codex, Claude Code, Kiro, Kilo Code, and Hermes.
 
-## Status and scope
+## Features
 
-This repository contains the local MVP: strict protocol models, state transitions, append-only storage, typed evidence graph, role/gate-enforcing service, JSON CLI, and MCP stdio adapter. It is an evidence/provenance boundary, not an LLM provider or an automatic truth oracle.
-
-The MVP deliberately does not bundle web search, cloud credentials, a database, or arbitrary experiment execution. Researchers and novelty agents provide source URLs, query logs, environment metadata, and externally produced raw outputs.
+- Separate roles for hypotheses, criticism, experiment design, execution, verification, novelty checks, and synthesis.
+- Immutable raw artifacts with provenance and content/config hashes.
+- Typed evidence graph: `Claim -> Evidence -> Finding -> Experiment -> Artifact`.
+- Blind verifier context that excludes the producer's conclusion.
+- Completion gates for evidence, verification, novelty, and final reports.
+- CLI for project setup and reports; MCP tools for the full research workflow.
+- Failed, negative, disputed, and inconclusive results remain queryable.
 
 ## Install
 
-Python 3.11 or newer is required.
+Requirements: Python 3.11+.
 
-With `pip`:
-
-```bash
-python -m pip install -e .
-```
-
-With `uv`:
-
-```bash
-uv pip install -e .
-```
-
-For a one-shot command without creating a project virtualenv, use `uvx` (the Python-native equivalent of `npx`):
+Run once from a checkout with an isolated environment:
 
 ```bash
 uvx --from . research-tool --help
-uvx --from . research-tool init ./research-project
 ```
 
-To install the command persistently for your user:
+Install the command persistently:
 
 ```bash
 uv tool install .
 research-tool --help
 ```
 
-After this repository is published to GitHub, the same forms work from Git:
+Without `uv`, install it into the active Python environment:
 
 ```bash
-uvx --from git+https://github.com/ORG/REPO research-tool --help
-uv tool install git+https://github.com/ORG/REPO
-```
-
-The GitHub URL is intentionally a placeholder until this checkout has a real remote. The `npx` command is not provided because this is a Python package; an npm wrapper would still need to install and manage the Python runtime and dependencies.
-
-For development/test dependencies:
-
-```bash
-python -m pip install -e ".[dev]"
-# or
-uv pip install -e ".[dev]"
-```
-
-The package exposes the `research-tool` console command and the `research_tool.mcp_server` module. A successful process start is still not the same as a connected client: use the client-specific verification steps in [`docs/integrations.md`](docs/integrations.md).
-
-## Intended CLI smoke flow
-
-The smallest CLI smoke flow is:
-
-```bash
+python -m pip install -e .
 research-tool --help
+```
+
+For development and tests:
+
+```bash
+uv pip install -e ".[dev]"
+python -m pytest
+```
+
+See the official [`uv` tools guide](https://docs.astral.sh/uv/guides/tools/) for `uvx` and `uv tool install`.
+
+## Use
+
+Initialize a research project and inspect its status:
+
+```bash
 research-tool init ./research-project
 research-tool status --project ./research-project
-research-tool validate --project ./research-project --limitation "No claims registered yet"
-# After the evidence and verification gates pass:
-research-tool report --project ./research-project --claim C-001 --limitation "Scope is limited to the registered benchmark"
 ```
 
-The flow returns machine-readable JSON. The final command is expected to return non-zero until a validated claim exists; `validate` fails closed when a completion gate fails.
-
-For a direct MCP stdio launch, use the module entrypoint until a published `research-tool mcp` command is available:
+Run the MCP server for a coding agent:
 
 ```bash
-python -m research_tool.mcp_server
+research-tool mcp --project ./research-project
 ```
 
-Do not add logging or banners to stdout in an MCP server; stdout is reserved for the protocol. Diagnostics belong on stderr.
+The CLI also validates completion and writes a report after all gates pass:
 
-## Research workflow and role boundaries
+```bash
+research-tool validate \
+  --project ./research-project \
+  --claim C-001 \
+  --limitation "Only the registered benchmark was evaluated"
 
-The shared core is intentionally stricter than a chat transcript:
-
-1. Hypothesis agents generate independent, falsifiable hypotheses before seeing peer output.
-2. Critics identify fatal issues, counterexamples, and competing explanations.
-3. The experiment designer registers baselines, controls, metrics, thresholds, seeds, and ablations before execution.
-4. The runner records the registered protocol and raw outputs without deleting failed runs or changing the protocol after seeing outcomes.
-5. An independent verifier performs a blind initial review and recomputes metrics from raw artifacts where possible.
-6. The synthesizer writes only from validated claim IDs, with scope, uncertainty, limitations, and contradictions preserved.
-
-Consensus is not evidence. A claim must retain a traceable chain:
-
-```text
-Claim -> Evidence -> Finding -> Experiment -> immutable Artifact
+research-tool report \
+  --project ./research-project \
+  --claim C-001 \
+  --limitation "Only the registered benchmark was evaluated"
 ```
 
-The verifier is not allowed to use the producer's conclusion or confidence for its initial verdict. Novelty is a separate gate and requires its own query log, sources, closest prior work, and coverage limits.
+CLI output is JSON. Validation and report generation fail closed when the required evidence, verification, novelty, or writing gates are incomplete.
 
-## Immutable artifacts and provenance
+## Workflow
 
-Raw outputs are append-only. A raw artifact must retain at least:
-
-```yaml
-artifact_id: ART-001
-created_by: C2
-created_at: 2026-08-15T00:00:00Z
-input_ids: [EXP-001]
-tool: example-runner
-tool_version: 1.0.0
-config_hash: sha256:...
-content_hash: sha256:...
-path: artifacts/ART-001/content
+```mermaid
+flowchart LR
+    H[Hypothesis] --> C[Critique]
+    C --> E[Registered experiment]
+    E --> A[Immutable artifact]
+    A --> F[Finding and evidence]
+    F --> L[Scoped claim]
+    L --> V[Blind verification]
+    V --> N[Novelty check]
+    N --> G[Completion gates]
+    G --> R[Final report]
 ```
 
-Existing object paths must never be overwritten. Derived artifacts point back to their raw inputs, and failed/negative runs remain queryable. These rules are integrity requirements, not optional logging conventions.
+The synthesizer can write only from claims that pass the evidence, verification, novelty, and writing gates. Scope, limitations, contradictions, and negative results stay in the record.
 
-## MCP integrations
+## Coding-agent integration
 
-See [`docs/integrations.md`](docs/integrations.md) for client-specific configuration for Codex, Claude Code, Kiro, Kilo Code, and Hermes. All examples use local stdio and the conservative module entrypoint:
+Project-local MCP configuration is included for Codex, Claude Code, Kiro, and Kilo Code. Hermes has a ready-to-merge snippet because its documented MCP configuration is user-scoped.
 
-```text
-python -m research_tool.mcp_server
-```
+See [`docs/integrations.md`](docs/integrations.md) for configuration and client-specific verification steps.
 
-The shorter `research-tool mcp` form should be used only after the CLI adapter actually exposes that subcommand.
+## Boundaries
 
+This tool is the workflow and evidence boundary, not an LLM provider or truth oracle. It does not bundle web search, cloud credentials, a database, or arbitrary experiment execution. External agents provide research sources, environment metadata, and raw experiment outputs.
