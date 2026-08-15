@@ -1,4 +1,6 @@
-# Multi-Agent Research Tool
+# EpistForge
+
+Evidence-Guided Multi-Agent Scientific Research System
 
 Local Python CLI and MCP stdio server for evidence-gated research workflows in Codex, Claude Code, Kiro, Kilo Code, and Hermes.
 
