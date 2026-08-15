@@ -127,16 +127,3 @@ python -m research_tool.mcp_server
 
 The shorter `research-tool mcp` form should be used only after the CLI adapter actually exposes that subcommand.
 
-## Verification status
-
-Verified from this checkout: Python package metadata, protocol/state/gate validation, append-only storage, graph validation, service flow, deterministic gated report generation, CLI JSON/error behavior, MCP initialize/list-tools over a real subprocess, and `28` repository tests.
-
-Not verified here: live connections from installed Codex, Claude Code, Kiro, Kilo Code, or Hermes clients; a published package; GitHub remote/PR state; and an external scientific experiment run. Client config is documented and the server transport is verified locally, but client connectivity must still be checked in each target environment.
-
-## References
-
-- [SPEC.md](SPEC.md) — protocol entities, gates, state machine, and agent message contract.
-- [RULES.md](RULES.md) — hard research-integrity invariants.
-- [Implementation plan](tasks/plan.md) — architecture, phases, and explicit MVP limits.
-- [MCP Python SDK](https://py.sdk.modelcontextprotocol.io/) — official Python SDK documentation.
-- [MCP specification](https://modelcontextprotocol.io/specification/latest) — protocol reference.
