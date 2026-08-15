@@ -1,0 +1,12 @@
+# Hermes does not document a project-local MCP config file.
+# Merge this entry into ~/.hermes/config.yaml, or the active HERMES_HOME profile.
+mcp_servers:
+  research-tool:
+    command: python
+    args:
+      - -m
+      - research_tool.mcp_server
+    enabled: true
+    timeout: 120
+    connect_timeout: 20
+    supports_parallel_tool_calls: false

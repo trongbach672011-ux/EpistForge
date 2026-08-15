@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multi-agent-research-tool"
+version = "0.1.0"
+description = "Evidence-gated, provenance-preserving research workflow for coding agents"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Multi-Agent Research Tool contributors" }]
+dependencies = [
+  "mcp>=1.27,<2",
+  "pydantic>=2.10,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<9",
+]
+
+[project.scripts]
+research-tool = "research_tool.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.setuptools.packages.find]
+include = ["research_tool*"]
