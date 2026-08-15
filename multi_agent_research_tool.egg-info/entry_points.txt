@@ -1,2 +1,0 @@
-[console_scripts]
-research-tool = research_tool.cli:main
