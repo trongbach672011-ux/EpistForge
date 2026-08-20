@@ -1,192 +1,188 @@
 # EpistForge
 
-> A research claim should not become a conclusion just because an agent said it.
+A research protocol for AI agents that have to show their work.
 
-EpistForge is a local protocol for AI-assisted research where claims have to **earn their way into the final report**.
+AI agents can produce a convincing conclusion before they have enough evidence for it. EpistForge puts a machine-checkable research process between the initial idea and the final report.
 
-It sits between research agents and their output and keeps a machine-checkable record of:
-
-`hypothesis → experiment → artifact → finding → evidence → claim → verification`
-
-Agents may propose, criticize, run experiments, or write.
-
-They do not decide by themselves what counts as established knowledge.
-
----
-
-## The idea
-
-Most agent workflows optimize for finishing the research task.
-
-EpistForge optimizes for something different:
-
-**being able to explain why a conclusion was allowed to exist.**
-
-A result is not promoted because several agents agree with it.
-
-A result is promoted only when the required evidence exists and the protocol gates pass.
-
-For example:
+It runs locally as a Python CLI and an MCP stdio server. Agents can propose hypotheses, run experiments, challenge results, verify claims, and write reports, but they cannot skip the evidence trail.
 
 ```text
 Hypothesis
-   │
-   ├── mechanism recorded
-   ├── predictions recorded
-   └── falsifiers recorded
-          │
-          ▼
+    ↓
+Critique
+    ↓
 Registered experiment
-   │
-   ├── baseline
-   ├── controls
-   ├── metrics
-   └── success / failure thresholds
-          │
-          ▼
-Immutable artifacts
-          │
-          ▼
-Finding + Evidence
-          │
-          ▼
+    ↓
+Raw artifact
+    ↓
+Finding
+    ↓
+Evidence
+    ↓
+Claim
+    ↓
 Independent verification
-          │
-          ▼
+    ↓
 Novelty check
-          │
-          ▼
-Promotable claim
-          │
-          ▼
+    ↓
 Final report
 ```
 
-If a required step fails, the claim stops there.
+If a required step is missing, the claim does not move forward.
 
----
+## Why EpistForge exists
 
-## Claims have states
+A multi-agent setup does not automatically make research reliable.
 
-EpistForge treats research conclusions as objects with a lifecycle rather than free-form text.
+Five agents agreeing with each other can still be five agents repeating the same mistake.
 
-A claim can be unsupported, disputed, verified, novelty-checked, promoted, or retracted.
+EpistForge treats agreement and evidence as different things. Instead of asking agents to decide among themselves whether a result is good enough, it records the research state and checks explicit rules before a claim can be promoted.
 
-Negative and inconclusive results are not deleted simply because they are inconvenient.
+The result is a research history you can inspect after the agents finish.
 
-They remain part of the research record.
+You can see:
 
-This makes it possible to ask not only:
+* which hypothesis produced an experiment
+* what the experiment was supposed to measure
+* which artifacts came from the run
+* which findings depend on those artifacts
+* what evidence supports or contradicts a claim
+* who verified the result
+* what was checked for novelty
+* why a claim was allowed into the report
 
-> “What did the agents conclude?”
+Failed and inconclusive results stay in the record too.
 
-but also:
+## Research is stored as evidence, not chat history
 
-> “Which evidence allowed this claim to be written?”
+EpistForge uses typed research objects instead of treating an agent conversation as the source of truth.
 
----
-
-## Fail closed
-
-EpistForge deliberately rejects incomplete research.
-
-An experiment can fail validation because it was not registered before execution.
-
-Evidence can fail because its artifact is missing or its content hash is invalid.
-
-Verification can fail because the verifier is the same agent that produced the result.
-
-A novelty claim can fail because the search coverage was not recorded.
-
-A final report can fail because the writer introduced a claim that did not exist in the validated research graph.
-
-```text
-agent output ≠ evidence
-evidence ≠ verified claim
-verified claim ≠ novel claim
-novel claim ≠ unrestricted conclusion
-```
-
-Those distinctions are the point of EpistForge.
-
----
-
-## Blind verification
-
-Verification is separated from production.
-
-The verifier records an initial verdict without inheriting the producer's conclusion and, where possible, recomputes metrics from the underlying artifacts.
-
-Critical unresolved verification issues prevent promotion.
-
-This is intended to reduce a common failure mode in agent teams where the “reviewer” merely rationalizes the previous agent's answer.
-
----
-
-## Evidence is traceable
-
-Raw artifacts are stored with provenance information and hashes.
-
-Evidence references those artifacts explicitly rather than relying on prose summaries.
-
-The research graph keeps relationships between:
+The basic evidence chain is:
 
 ```text
 Claim
   └── Evidence
-       └── Finding
-            └── Experiment
-                 └── Artifact
+        └── Finding
+              └── Experiment
+                    └── Artifact
 ```
 
-The final writer therefore works from validated claims, not directly from arbitrary agent conversations.
+Raw artifacts include provenance and hashes so later stages can refer back to the actual output rather than a summary written by another agent.
 
----
+This matters when several agents work on the same project. The verifier should be checking the experiment and its artifacts, not trusting the producer's explanation of what happened.
+
+## Gates
+
+EpistForge checks each stage before allowing the research to continue.
+
+### Hypothesis
+
+A hypothesis needs more than a statement.
+
+It must record:
+
+* a proposed mechanism
+* assumptions
+* predictions
+* falsifiers
+
+Fatal critique issues have to be resolved before it passes the hypothesis gate.
+
+### Experiment
+
+Experiments are registered before execution.
+
+The protocol requires baselines, controls, metrics, success thresholds, failure thresholds, and expected artifacts.
+
+This prevents an agent from running an experiment first and deciding afterward what should count as success.
+
+### Evidence
+
+Evidence must point to real artifacts.
+
+EpistForge checks that referenced artifacts exist, that their content hashes are valid, and that the corresponding finding has a recorded source.
+
+### Verification
+
+The verifier cannot be the same agent that produced the result.
+
+Verification records an initial blind verdict and checks experiment compliance. The verifier also recomputes metrics when possible, or records why recomputation was not possible.
+
+Unresolved P0 verification issues block promotion.
+
+### Novelty
+
+A claim cannot simply be labeled "novel."
+
+The novelty record stores the queries used, sources checked, closest prior work, search limits, and whether the wording of the claim stays inside the coverage of that search.
+
+A failed search is still a result. It has to be recorded instead of silently becoming "no prior work exists."
+
+### Writing
+
+The writer does not get to invent new research claims.
+
+Major claims in the final draft must already exist in the validated research state. Disputed claims cannot be written as settled facts, and limitations have to be included.
+
+The report is the last consumer of the evidence graph, not another place to create evidence.
 
 ## Quick start
 
-Requires Python 3.11+.
+EpistForge requires Python 3.11 or newer.
 
-From a checkout:
+Run it directly from a checkout with `uvx`:
 
 ```bash
 uvx --from . research-tool --help
 ```
 
-Or install it:
+Install the command with `uv`:
 
 ```bash
 uv tool install .
 research-tool --help
 ```
 
-Development setup:
+Or install it into the active Python environment:
 
 ```bash
-uv pip install -e ".[dev]"
-python -m pytest
+python -m pip install -e .
+research-tool --help
 ```
 
-Create a research workspace:
+## Create a research project
+
+Initialize a workspace:
 
 ```bash
 research-tool init ./research-project
+```
+
+Check its current state:
+
+```bash
 research-tool status --project ./research-project
 ```
 
-Start the MCP server:
+CLI output is JSON so coding agents can consume the result without scraping terminal prose.
+
+## Use EpistForge through MCP
+
+Start the MCP stdio server:
 
 ```bash
 research-tool mcp --project ./research-project
 ```
 
-EpistForge can then act as the protocol layer for MCP-capable coding and research agents.
+EpistForge can then provide the research protocol to MCP-capable coding agents.
 
----
+Project-local configuration is included for Codex, Claude Code, Kiro, and Kilo Code. Hermes has a ready-to-merge configuration snippet because its MCP configuration is user scoped.
 
-## Before a claim can be written
+See [`docs/integrations.md`](docs/integrations.md) for setup and client-specific checks.
 
-Validation is explicit:
+## Validate a claim
+
+Before producing a report, validate the research state:
 
 ```bash
 research-tool validate \
@@ -195,7 +191,9 @@ research-tool validate \
   --limitation "Only the registered benchmark was evaluated"
 ```
 
-A final report can be generated only after the required gates pass:
+Validation fails if the required evidence, verification, novelty, or writing checks are incomplete.
+
+Once the gates pass, generate the report:
 
 ```bash
 research-tool report \
@@ -204,61 +202,40 @@ research-tool report \
   --limitation "Only the registered benchmark was evaluated"
 ```
 
-The CLI returns structured JSON so agents can reason about failures instead of parsing human-oriented terminal output.
+## What happens to bad results?
 
----
+They stay.
 
-## What EpistForge is not
+A negative result should not disappear because another hypothesis looks more promising. A disputed claim should not quietly become accepted later. An inconclusive experiment should not be rewritten as a weak success.
 
-EpistForge is not an LLM.
+EpistForge keeps failed, negative, disputed, and inconclusive results queryable so later agents can see what was already tried and why it did not pass.
 
-It is not a web-search engine.
+## What EpistForge does not do
 
-It does not claim to determine scientific truth.
+EpistForge does not provide an LLM.
 
-It does not make several agents agreeing with each other equivalent to verification.
+It does not bundle web search or cloud credentials.
 
-It does not hide negative, disputed, or inconclusive results.
+It does not execute arbitrary experiments for the agent.
 
-It provides the protocol and evidence boundary around agents that perform the actual research work.
+It does not decide whether a scientific statement is ultimately true.
 
----
+Its job is narrower: keep the research process explicit, preserve the evidence trail, and stop unsupported claims from moving through the workflow unnoticed.
 
-## Integrations
+External agents still provide sources, environment information, experiment execution, and raw outputs.
 
-EpistForge exposes its research workflow through an MCP stdio server and can be used with MCP-capable coding agents.
+## Development
 
-Configuration examples are available in:
+Install the development dependencies:
 
-[`docs/integrations.md`](docs/integrations.md)
+```bash
+uv pip install -e ".[dev]"
+```
 
----
+Run the test suite:
 
-## Design principle
+```bash
+python -m pytest
+```
 
-EpistForge follows one rule:
-
-> **No conclusion without a trail.**
-
-If the system cannot reconstruct how a claim moved from hypothesis to evidence to verification, that claim should not appear as established knowledge.
-
----
-
-## Status
-
-EpistForge is under active development.
-
-The current implementation focuses on the protocol layer:
-
-* typed research objects
-* explicit state transitions
-* machine-checkable promotion gates
-* immutable artifact provenance
-* blind independent verification
-* novelty-search records
-* controlled synthesis
-* CLI and MCP interfaces
-
-The next goal is not to add more agents.
-
-It is to make the evidence trail harder to fake, easier to inspect, and easier to reproduce.
+The tests cover protocol gates, state transitions, storage and graph behavior, service operations, packaging, MCP interfaces, and client configuration.
